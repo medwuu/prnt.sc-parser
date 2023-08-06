@@ -7,7 +7,10 @@ import requests
 from tqdm import tqdm
 from bs4 import BeautifulSoup
 from selenium import webdriver
+from selenium.webdriver.common.by import By
 from selenium.webdriver.firefox.options import Options
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions
 
 def init():
     options = Options()
@@ -21,22 +24,24 @@ def init():
     browser.set_window_size(1500, 700)
     
 
-def getImgLinks():
+def getImgLinks(img_count):
     letters = string.ascii_lowercase + string.digits
-    links_list = []
-    for iter in tqdm(range(50)):
+    links_list = {}
+    for iter in tqdm(range(img_count)):
         postfix = ''.join([random.choice(letters) for _ in range(6)])
         link = f"https://prnt.sc/{postfix}"
         browser.get(link)
+        # Позволяет приступить к проверке фото сразу после того, как на странице полностью загрузится <body>
+        WebDriverWait(browser, 10).until(expected_conditions.visibility_of_element_located((By.TAG_NAME, "body")))
         img_link = checkImg(browser.page_source)
         if not img_link:
             continue
-
+        
         if saveImg(img_link, postfix):
-            links_list.append({postfix: img_link})
+            links_list[postfix] = img_link
 
 
-        if iter % 10 == 0:
+        if iter % int(os.getenv("BACKUP_COUNT")) == 0:
             writeIntoJSON(links_list)
     writeIntoJSON(links_list)
 
@@ -69,7 +74,7 @@ def saveImg(url, postfix):
 def main():
     dotenv.load_dotenv()
     init()
-    getImgLinks()
+    getImgLinks(int(os.getenv("IMG_COUNT")))
     browser.quit()
 
 if __name__ == "__main__":
