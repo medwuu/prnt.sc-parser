@@ -3,16 +3,16 @@ import json
 import string
 import random
 import dotenv
+import requests
 from tqdm import tqdm
+from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.firefox.options import Options
-from selenium.webdriver.common.by import By
-import selenium.common.exceptions
 
 def init():
     options = Options()
     options.binary_location = os.getenv("BROWSER_PATH")
-    # Чтобы окно не открывалось
+    # TODO: в конце, чтобы окно не открывалось
     # options.add_argument("--headless")
     options.page_load_strategy = 'eager'
     global browser
@@ -24,27 +24,15 @@ def init():
 def getImgLinks():
     letters = string.ascii_lowercase + string.digits
     links_list = []
-    for iter in tqdm(range(10)):
+    for iter in tqdm(range(50)):
         postfix = ''.join([random.choice(letters) for _ in range(6)])
         link = f"https://prnt.sc/{postfix}"
         browser.get(link)
-
-        try:
-            img_section = browser.find_element(By.ID, "screenshot-image")
-        except selenium.common.exceptions.NoSuchElementException:
+        img_link = checkImg(browser.page_source)
+        if not img_link:
             continue
 
-        if img_section.get_attribute("attempt"):
-            continue
-
-        img_link = img_section.get_attribute("src")
-        browser.get(img_link)
-        try:
-            if "//st.prntscr.com/" not in img_link and \
-            browser.current_url != "https://i.imgur.com/removed.png" and \
-            not browser.find_element(By.TAG_NAME, "h1"):
-                links_list.append({postfix: img_link})
-        except selenium.common.exceptions.NoSuchElementException:
+        if saveImg(img_link, postfix):
             links_list.append({postfix: img_link})
 
 
@@ -57,8 +45,24 @@ def writeIntoJSON(links_list=[], filename="links"):
     with open(f"{filename}.json", "w") as f:
         json.dump(links_list, f, indent=4, ensure_ascii=False)
 
+def checkImg(html):
+    soup = BeautifulSoup(html, "lxml")
+    img_section = soup.find("img", id="screenshot-image")
+    if img_section and not img_section.has_attr("attempt"):
+        img_link = img_section.get_attribute_list("src")[0]
+        if not "//st.prntscr.com" in img_link:
+            return img_link
+    return ""
+    
 
-
+def saveImg(url, postfix):
+    r = requests.get(url)
+    if r.url != "https://i.imgur.com/removed.png" and \
+    "404 Not Found" not in r.text:
+        with open(f"result\\{postfix}.png", "wb") as f:
+            f.write(r.content)
+            return True
+    return False
 
 
 
