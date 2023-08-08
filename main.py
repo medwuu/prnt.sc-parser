@@ -1,3 +1,4 @@
+import os
 import json
 import string
 import random
@@ -12,12 +13,39 @@ from selenium.webdriver.firefox.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions
 
+def checkConfig():
+    global config
+    config = configparser.ConfigParser()
+    if not os.path.isfile('config.ini'):
+        config.add_section('PATH')
+        config.set('PATH', 'BROWSER_PATH', r'C:\Program Files\Mozilla Firefox\firefox.exe')
+        config.set('PATH', 'RESULT_FOLDER', 'result')
+        config.set('PATH', 'JSON_NAME', 'links')
+        config.add('WORK')
+        config.set('WORK', 'IMG_COUNT', '100')
+        config.set('WORK', 'BACKUP_COUNT', '10')
+        config.set('WORK', 'USE_FAST_METHOD','1')
+        config.add_section('WINDOW')
+        config.set('WINDOW', 'WIDTH', '1500')
+        config.set('WINDOW', 'HEIGHT', '700')
+        config.set('WINDOW', 'IS_VISIBLE', '0')
+        with open('config.ini', 'w') as cfg_file:
+            config.write(cfg_file)
+    else:
+        config.read('config.ini')
+        for section in config.sections():
+            for _, value in config.items(section):
+                if not value or \
+                section != 'PATH' and not value.isdigit():
+                    return False
+    return True
+
 
 def init() -> None:
     """Инициализация окна и его настройка"""
     options = Options()
     options.binary_location = config['PATH']['BROWSER_PATH']
-    if not config['WINDOW']['IS_VISIBLE']:
+    if not int(config['WINDOW']['IS_VISIBLE']):
         options.add_argument('--headless')
     options.page_load_strategy = 'eager'
     # TODO: прикрутить сюда прокси
@@ -99,9 +127,9 @@ def saveImgFast() -> None:
 
 
 def main():
-    global config
-    config = configparser.ConfigParser()
-    config.read('config.ini')
+    if not checkConfig():
+        print("Ошибка чтения config файла! Пожалуйста, проверьте правильность ввседённых данных")
+        return
     global img_downloaded
     img_downloaded = 0
     tprint("PRNT.SC        PARSER")
