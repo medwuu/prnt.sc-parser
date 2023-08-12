@@ -24,7 +24,6 @@ def checkConfig():
         config.add('WORK')
         config.set('WORK', 'IMG_COUNT', '100')
         config.set('WORK', 'BACKUP_COUNT', '10')
-        config.set('WORK', 'USE_FAST_METHOD','1')
         config.add_section('WINDOW')
         config.set('WINDOW', 'WIDTH', '1500')
         config.set('WINDOW', 'HEIGHT', '700')
@@ -32,6 +31,7 @@ def checkConfig():
         with open('config.ini', 'w') as cfg_file:
             config.write(cfg_file)
     else:
+        # TODO: проверка наличия всех ключей
         config.read('config.ini')
         for section in config.sections():
             for _, value in config.items(section):
@@ -45,21 +45,21 @@ def init() -> None:
     """Инициализация окна и его настройка"""
     options = Options()
     options.binary_location = config['PATH']['BROWSER_PATH']
-    if not int(config['WINDOW']['IS_VISIBLE']):
-        options.add_argument('--headless')
     options.page_load_strategy = 'eager'
     # TODO: прикрутить сюда прокси
     global browser
     browser = webdriver.Firefox(options=options)
+    browser.install_addon('extensions\\browsec@browsec.com.xpi', True)
     browser.set_window_position(0, 0)
-    # аргумент set_window_size позволяет передавать str значения, поэтому здесь нет преобразования в int
+    # set_window_size позволяет передавать str значения, поэтому здесь нет преобразования в int
     browser.set_window_size(config['WINDOW']['WIDTH'], config['WINDOW']['HEIGHT'])
+    global img_downloaded
+    img_downloaded = 0
     
     
 
 def getImgLinks() -> None:
-    """При (USE_FAST_METHOD == 0) добавление проверенной сслыки в json и загрузка изображения.\n
-    При (USE_FAST_METHOD != 0) только добавление ссылки в json, если она найдена"""
+    """Добавление ссылки в json, если она найдена (но не проверена)"""
     letters = string.ascii_lowercase + string.digits
     links_dict = {}
     for iter in tqdm(range(int(config['WORK']['IMG_COUNT']))):
@@ -72,11 +72,10 @@ def getImgLinks() -> None:
         # Изображение: не найдено на странице || не загружается || удалено
         if not img_link:
             continue
+            
         
-        # В первом случае добавляется в json любая найденная сслылка
-        # Во втором случае сохранятся и заносится в json, только если существует
-        # FIXME: в первом случае добавляются нерабочие ссылки
-        if int(config['WORK']['USE_FAST_METHOD']) or saveImg(img_link, postfix):
+        # FIXME: добавляются нерабочие ссылки
+        if saveImg(img_link, postfix):
             links_dict[postfix] = img_link
 
 
@@ -115,14 +114,6 @@ def saveImg(url: str, postfix: str) -> bool:
         return True
     return False
 
-def saveImgFast() -> None:
-    """Чтение проверенных ссылок из json и скачивание изображений"""
-    with open(f'{config["PATH"]["JSON_NAME"]}.json', 'r') as f:
-        file_links = json.load(f)
-    postfixes = list(file_links.keys())
-    links = list(file_links.values())
-    for x in tqdm(range(len(links))):
-        saveImg(links[x], postfixes[x])
 
 
 
@@ -130,16 +121,11 @@ def main():
     if not checkConfig():
         print("Ошибка чтения config файла! Пожалуйста, проверьте правильность ввседённых данных")
         return
-    global img_downloaded
-    img_downloaded = 0
     tprint("PRNT.SC        PARSER")
-    input("Включите VPN и нажмите Enter...")
     init()
+    input("Включите VPN и нажмите Enter...")
     getImgLinks()
     browser.quit()
-    if int(config['WORK']['USE_FAST_METHOD']):
-        input("Для скачивания картинок отключите VPN и нажмите Enter...")
-        saveImgFast()
     print(f"Программа успешно завершена! Найдено и скачано {img_downloaded}/{config['WORK']['IMG_COUNT']} изображений")
 
 if __name__ == '__main__':
