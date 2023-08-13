@@ -24,7 +24,7 @@
 
 ---
 ### Установка:
-1. Убедиться, что стоит [Python 3.11](https://www.python.org/downloads/)
+1. Убедиться, что стоит [Python 3.11](https://www.python.org/downloads/) и [Firefox последней версии](https://www.mozilla.org/ru/firefox/new/)
 2. Прописать в консоли `pip install -r requitements.txt`
 3. При необходимости изменить файл `config.ini`
 4. Запустить скрипт
