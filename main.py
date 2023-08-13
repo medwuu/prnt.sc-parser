@@ -4,6 +4,7 @@ import string
 import random
 import configparser
 import requests
+import pyautogui as pag
 from tqdm import tqdm
 from art import tprint
 from bs4 import BeautifulSoup
@@ -24,10 +25,6 @@ def checkConfig():
         config.add('WORK')
         config.set('WORK', 'IMG_COUNT', '100')
         config.set('WORK', 'BACKUP_COUNT', '10')
-        config.add_section('WINDOW')
-        config.set('WINDOW', 'WIDTH', '1500')
-        config.set('WINDOW', 'HEIGHT', '700')
-        config.set('WINDOW', 'IS_VISIBLE', '0')
         with open('config.ini', 'w') as cfg_file:
             config.write(cfg_file)
     else:
@@ -46,19 +43,22 @@ def init() -> None:
     options = Options()
     options.binary_location = config['PATH']['BROWSER_PATH']
     options.page_load_strategy = 'eager'
-    # TODO: прикрутить сюда прокси
     global browser
     browser = webdriver.Firefox(options=options)
     browser.install_addon('extensions\\browsec@browsec.com.xpi', True)
-    browser.set_window_position(0, 0)
     # set_window_size позволяет передавать str значения, поэтому здесь нет преобразования в int
-    browser.set_window_size(config['WINDOW']['WIDTH'], config['WINDOW']['HEIGHT'])
+    browser.maximize_window()
+    # сорян за такой костыль. unfortunately, selenium не полволяет управлять расширениями
+    pag.click(1850, 80, interval=0.2)
+    pag.click(1500, 200, interval=0.2)
+    pag.click(1600, 500, interval=0.2)
+    pag.hotkey('alt', 'tab')
     global img_downloaded
     img_downloaded = 0
     
     
 
-def getImgLinks() -> None:
+def process() -> None:
     """Добавление ссылки в json, если она найдена (но не проверена)"""
     letters = string.ascii_lowercase + string.digits
     links_dict = {}
@@ -73,11 +73,8 @@ def getImgLinks() -> None:
         if not img_link:
             continue
             
-        
-        # FIXME: добавляются нерабочие ссылки
         if saveImg(img_link, postfix):
             links_dict[postfix] = img_link
-
 
         if iter % int(config['WORK']['BACKUP_COUNT']) == 0:
             writeIntoJSON(links_dict)
@@ -106,7 +103,9 @@ def saveImg(url: str, postfix: str) -> bool:
     Output: было ли изображение сохранено (bool)"""
     r = requests.get(url)
     if r.url != 'https://i.imgur.com/removed.png' and \
-    '404 Not Found' not in r.text:
+    all(x not in r.text for x in ['404 Not Found', 'Error code 520']):
+        if not os.path.isdir(config['PATH']['RESULT_FOLDER']):
+            os.makedirs(config['PATH']['RESULT_FOLDER'])
         with open(f'{config["PATH"]["RESULT_FOLDER"]}\\{postfix}.png', 'wb') as f:
             f.write(r.content)
         global img_downloaded
@@ -123,8 +122,8 @@ def main():
         return
     tprint("PRNT.SC        PARSER")
     init()
-    input("Включите VPN и нажмите Enter...")
-    getImgLinks()
+    print("Просканировано изображений:")
+    process()
     browser.quit()
     print(f"Программа успешно завершена! Найдено и скачано {img_downloaded}/{config['WORK']['IMG_COUNT']} изображений")
 
