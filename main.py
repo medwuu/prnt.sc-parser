@@ -14,7 +14,8 @@ from selenium.webdriver.firefox.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions
 
-def checkConfig():
+def checkConfig() -> bool:
+    """Валидный ли config.файл"""
     global config
     config = configparser.ConfigParser()
     if not os.path.isfile('config.ini'):
