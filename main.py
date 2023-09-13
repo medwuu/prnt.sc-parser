@@ -49,9 +49,12 @@ def init() -> None:
     browser.install_addon('extensions\\browsec@browsec.com.xpi', True)
     # set_window_size позволяет передавать str значения, поэтому здесь нет преобразования в int
     browser.maximize_window()
+    for _ in range(5):
+        pag.press('tab')
+    pag.press('right')
+    for _ in range(2):
+        pag.press('enter', interval=0.2)
     # сорян за такой костыль. unfortunately, selenium не полволяет управлять расширениями
-    pag.click(1850, 80, interval=0.2)
-    pag.click(1500, 200, interval=0.2)
     pag.click(1600, 500, interval=0.2)
     pag.hotkey('alt', 'tab')
     global img_downloaded
